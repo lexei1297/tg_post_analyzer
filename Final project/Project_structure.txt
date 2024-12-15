@@ -1,0 +1,9 @@
+tg_post_analyzer/
+│
+├── tg_post_analyzer.py  # Main application file
+├── utils/
+│   ├── html_parser.py  # Handles HTML parsing
+│   ├── text_analyzer.py  # Handles text classification and semantic tagging
+│   └── file_handler.py  # Manages file and folder operations
+├── output/  # Directory for CSV results
+├── README.md  # Instructions and usage examples
