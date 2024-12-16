@@ -17,20 +17,29 @@ class TelegramHTMLParser:
             for filename in os.listdir(path):
                 if filename.endswith(".html"):
                     file_path = os.path.join(path, filename)
-                    posts.extend(self._parse_single_file(file_path))
+                    posts.extend(self.parse_single_file(file_path))
         else:
             raise ValueError(f"Invalid path: {path}")
         return posts
 
-    def _parse_single_file(self, file_path):
+    def parse_single_file(self, file_path):
         """
         Parse a single HTML file and extract posts.
         """
         with open(file_path, "r", encoding="utf-8") as file:
             soup = BeautifulSoup(file, "html.parser")
             posts = []
-            for post in soup.find_all("div", class_="tgme_widget_message"):
-                date = post.find("time")["datetime"].split("T")[0]
-                content = post.find("div", class_="tgme_widget_message_text").text.strip()
-                posts.append({"date": date, "content": content})
-            return posts
+
+            # Find all regular messages
+            for post in soup.find_all("div", class_ = "message default clearfix"):
+                content = post.find("div", class_ ="text")
+                date = post.find("div", class_ ="pull_right date details")
+
+                if content and date:
+                    posts.append({
+                        "text": content.get_text(strip=True),
+                        "date": date["title"] if date.has_attr("title") else "Unknown",
+                        "semantic_tag": None,
+                        "topic": None
+                    })
+        return posts

@@ -1,39 +1,34 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-import numpy as np
-import joblib
-import transformers
-
+from transformers import AutoTokenizer,AutoModelForSequenceClassification, pipeline
+import torch
 
 class TextAnalyzer:
-    def __init__(self, method="bag_of_words"):
-        self.method = method
-        self.model = None
+    def __init__(self):
+        self.stag_tokenizer = AutoTokenizer.from_pretrained("MonoHime/rubert-base-cased-sentiment-new")
+        self.stag_model = AutoModelForSequenceClassification.from_pretrained("MonoHime/rubert-base-cased-sentiment-new")
+        self.label_model = pipeline("zero-shot-classification", model="MoritzLaurer/mDeBERTa-v3-base-mnli-xnli")
 
-        if method == "bag_of_words":
-            self.vectorizer = TfidfVectorizer()
-            self.model = joblib.load("models/bag_of_words_model.pkl")
-        elif method == "topic_classifier":
-            self.model = joblib.load("models/topic_classifier.pkl")
-        elif method == "zero_shot":
-            from transformers import pipeline
-            self.model = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-        else:
-            raise ValueError(f"Unknown method: {method}")
-
-    def analyze_content(self, content):
+    def analyze_content(self, content:str):
         """
         Analyze post content and return sentiment and label.
         """
-        if self.method in ["bag_of_words", "topic_classifier"]:
-            vectorized = self.vectorizer.transform([content])
-            prediction = self.model.predict(vectorized)[0]
-            sentiment = self._get_sentiment(prediction)
-        elif self.method == "zero_shot":
-            result = self.model(content, candidate_labels=["sport", "disaster", "politics"])
-            label = result["labels"][0]
-            sentiment = "POSITIVE" if label == "sport" else "NEGATIVE"
-        return sentiment, label
+        placeholder_labels = ["видеоигры", "компьютеры", "люди", "технологии", "медиа"]
+        output = self.label_model(content, placeholder_labels, multi_label=True)
 
-    def _get_sentiment(self, label):
-        return "POSITIVE" if label == "sport" else "NEGATIVE"
+
+        return output['labels'][0]
+    def get_sentiment(self, content:str):
+        labels = ["Positive", "Negative", "Neutral"]
+        inputs = self.stag_tokenizer(content, padding=True, return_tensors="pt")
+
+        with torch.no_grad():
+            outputs = self.stag_model(**inputs)
+
+        predicted_stag = torch.argmax(outputs.logits).item()
+        return labels[predicted_stag]
+    def update_post(self,posts:list[dict])->list[dict]:
+        for post in posts:
+            post["semantic_tag"] = self.get_sentiment(post["text"])
+            post["topic"] = self.analyze_content(post["text"])
+        return posts
+
+
