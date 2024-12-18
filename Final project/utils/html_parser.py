@@ -12,7 +12,7 @@ class TelegramHTMLParser:
         """
         posts = []
         if os.path.isfile(path):
-            posts.extend(self._parse_single_file(path))
+            posts.extend(self.parse_single_file(path))
         elif os.path.isdir(path):
             for filename in os.listdir(path):
                 if filename.endswith(".html"):
@@ -36,9 +36,10 @@ class TelegramHTMLParser:
                 date = post.find("div", class_ ="pull_right date details")
 
                 if content and date:
+                    date = date["title"] if date.has_attr("title") else "Unknown"
                     posts.append({
                         "text": content.get_text(strip=True),
-                        "date": date["title"] if date.has_attr("title") else "Unknown",
+                        "date": date[:10],
                         "semantic_tag": None,
                         "topic": None
                     })
